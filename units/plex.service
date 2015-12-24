@@ -1,0 +1,34 @@
+[Unit]
+Description=PLEX Media Server
+Requires=docker.service
+After=docker.service
+
+[Service]
+# Setup the default environment
+Environment='PLEX_IMAGE=timhaak/plex'
+Environment='PLEX_CONFIG=/srv/docker/plex/config'
+Environment='PLEX_DATA=/srv/docker/plex/data'
+
+# Pulling a docker image can take a long time, don't time out.
+TimeoutStartSec=0
+
+# Setup the system
+ExecStartPre=/usr/bin/mkdir -p ${PLEX_CONFIG}
+ExecStartPre=/usr/bin/mkdir -p ${PLEX_DATA}
+ExecStartPre=/usr/bin/docker pull ${PLEX_IMAGE}
+
+# Clean any old containers
+ExecStartPre=-/usr/bin/docker rm %p
+
+# Start the container
+ExecStart=/usr/bin/bash -c 'docker run --rm --name %p \
+  ${DOCKER_HOSTNAME} ${DOCKER_NETWORKING} ${DOCKER_PORTMAPS} \
+  -v=${PLEX_CONFIG}:/config -v=${PLEX_DATA}:/data \
+  ${PLEX_IMAGE}'
+
+# Stop the container
+ExecStop=-/usr/bin/docker stop %p
+ExecStopPost=/usr/bin/rm -f '${PLEX_CONFIG}/Library/Application Support/Plex Media Server/plexmediaserver.pid'
+
+[Install]
+WantedBy=multi-user.target
